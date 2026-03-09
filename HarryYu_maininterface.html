@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clearwater Conservancy</title>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet" />
+<style>
+  :root {
+    --bg-deep: var(--navy);
+    --bg-panel: rgba(0, 79, 113, 0.9);
+    --bg-panel-trans: rgba(0, 61, 76, 0.6);
+    --bg-card: var(--forest);
+    --bg-card-hover: rgba(0, 87, 63, 0.85);
+    --accent: var(--azure);
+    --accent-dim: var(--meadow);
+    --accent-glow: rgba(72, 159, 223, 0.15);
+    --text-primary: var(--sand);
+    --text-secondary: var(--sky);
+    --text-muted: rgba(217, 235, 249, 0.55);
+    --border: rgba(72, 159, 223, 0.2);
+    --border-strong: rgba(72, 159, 223, 0.4);
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    --navy: rgb(0, 61, 76); 
+    --midnight: rgb(0, 79, 113);
+    --azure: rgb(72, 159, 223);
+    --sky: rgb(217, 235, 249);
+    --forest: rgb(0, 87, 63);
+    --meadow: rgb(91, 167, 94);
+    --sun: rgb(240, 179, 35);
+    --sand: rgb(239, 237, 234);
+    --fonthg: 'Host Grotesk', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--fonthg);
+    background: var(--navy);
+    color: var(--sand);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── NAV ── */
+  .top-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px 0 17px;
+    height: 60px;
+    background: var(--navy);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 20px;
+  }
+
+  .nav-link {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    background: none;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .nav-link:hover, .nav-link.active {
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  /* ── LAYOUT ── */
+  .app {
+    display: flex;
+    height: 100vh;
+    padding-top: 60px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 95%;
+    width: 460px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 500;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+
+  .sidebar-header {
+    padding: 32px 28px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header h1 {
+    font-family: var(--fonthg);
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+
+  .sidebar-header .subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+
+  .sidebar-header .stat-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 18px;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── SEARCH ── */
+  .search-bar {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: var(--fonthg);
+    outline: none;
+    transition: border-color 0.2s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%235a7a68' viewBox='0 0 24 24'%3E%3Cpath d='M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z' stroke='%235a7a68' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+  }
+
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-input:focus { border-color: var(--accent-dim); }
+
+  /* ── SITE LIST ── */
+  .site-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-dim) transparent;
+  }
+
+  .site-list::-webkit-scrollbar { width: 5px; }
+  .site-list::-webkit-scrollbar-thumb { background: var(--accent-dim); border-radius: 4px; }
+
+  .site-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    margin-bottom: 4px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s;
+    border: 1px solid transparent;
+    position: relative;
+  }
+
+  .site-card:hover {
+    background: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .site-card.active {
+    background: var(--bg-card-hover);
+    border-color: var(--border-strong);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .site-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  .site-card-body { flex: 1; }
+
+  .site-card-name {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 3px;
+  }
+
+  .site-card-type {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .site-card-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .site-card-coords {
+    font-size: 11px;
+    font-family: var(--fonthg);
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* ── MAP ── */
+  .map-container {
+    flex: 1;
+    position: relative;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Mapbox overrides */
+  .mapboxgl-ctrl-group {
+    background: var(--bg-panel) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow) !important;
+  }
+  .mapboxgl-ctrl-group button {
+    background: transparent !important;
+    color: var(--accent) !important;
+  }
+  .mapboxgl-ctrl-group button:hover {
+    background: var(--bg-card) !important;
+  }
+  .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
+    background-color: white !important;
+  }
+  .mapboxgl-ctrl-group button + button {
+    border-top: 1px solid var(--border) !important;
+  }
+
+  /* ── DETAIL PANEL ── */
+  .detail-panel {
+    position: absolute;
+    top: 0; right: 0;
+    width: 380px;
+    height: 100%;
+    background: var(--bg-panel-trans);
+    border-left: 1px solid var(--border);
+    z-index: 800;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: -8px 0 32px rgba(0,0,0,0.3);
+  }
+
+  .detail-panel.open {
+    transform: translateX(0);
+  }
+
+  .detail-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 36px; height: 36px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+    z-index: 10;
+  }
+
+  .detail-close:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .detail-hero {
+    height: 200px;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .detail-hero-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.35;
+  }
+
+  .detail-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, var(--bg-panel-trans), transparent 60%);
+  }
+
+  .detail-hero-content {
+    position: absolute;
+    bottom: 20px;
+    left: 24px;
+    right: 24px;
+  }
+
+  .detail-type-badge {
+    display: inline-block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .detail-title {
+    font-family: var(--fonthg);
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1.15;
+  }
+
+  .detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255);
+  }
+
+  .detail-coords {
+    font-family: var(--fonthg);
+    font-size: 13px;
+    color: rgba(255,255,255);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .detail-coords svg {
+    width: 14px; height: 14px;
+    stroke: var(--accent-dim);
+  }
+
+  .detail-section {
+    margin-bottom: 24px;
+  }
+
+  .detail-section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-section p {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  .detail-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .detail-fact {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 14px;
+    border: 1px solid var(--border);
+  }
+
+  .detail-fact-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+
+  .detail-fact-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  .detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .detail-tag {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: var(--bg-card);
+  }
+
+  /* ── CUSTOM MARKERS ── */
+  .custom-marker {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.8);
+    box-shadow: 0 0 12px currentColor, 0 2px 8px rgba(0,0,0,0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+
+  .custom-marker:hover {
+    transform: scale(1.4);
+    box-shadow: 0 0 20px currentColor, 0 2px 12px rgba(0,0,0,0.4);
+  }
+
+  .custom-marker.active-marker {
+    transform: scale(1.6);
+    box-shadow: 0 0 24px currentColor, 0 0 48px currentColor;
+  }
+
+  /* ── SITE LABELS ── */
+  .site-label {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    font-family: var(--fonthg);
+    user-select: none;
+    pointer-events: auto;
+  }
+
+  .site-label:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── SUB-POINT LABELS ── */
+  .sub-label {
+    background: var(--bg-panel-trans);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    font-family: var(--fonthg);
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* ── TOOLTIP ── */
+  .map-tooltip .mapboxgl-popup-content {
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: var(--fonthg);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow);
+  }
+
+  .map-tooltip .mapboxgl-popup-tip {
+    border-top-color: var(--border-strong);
+  }
+
+  /* ── FILTER PILLS ── */
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    padding: 12px 28px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .filter-pill {
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--fonthg);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+
+  .filter-pill:hover { border-color: var(--accent-dim); color: var(--text-primary); }
+
+  .filter-pill.active {
+    background: var(--accent);
+    color: var(--bg-deep);
+    border-color: var(--accent);
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .site-card {
+    animation: fadeInUp 0.35s ease both;
+  }
+
+  /* ── MAP TILES ── */
+
+  /* ── PULSE ANIMATION ── */
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 12px currentColor, 0 2px 8px rgba(0,0,0,0.3); }
+    50% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+  }
+
+  .marker-pulse { animation: pulse 2s ease-in-out infinite; }
+
+  /* ── SIDEBAR TAB ── */
+  .sidebar-tab {
+    position: absolute;
+    right: -26px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 88px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-strong);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    z-index: 10;
+  }
+
+  .sidebar-tab:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .sidebar-tab .tab-arrow {
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Arrow points right (expand) when collapsed */
+  .sidebar.collapsed .sidebar-tab .tab-arrow {
+    transform: rotate(180deg);
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="top-bar">
+  <div class="logo">
+    <img src = 'logos/HarryYu_cwc_logo_long_reverse.svg' alt = "Clearwater Conservancy" height = "150">
+  </div>
+  <div class="nav-links">
+    <button class="nav-link active" onclick="showView('map')">Map</button>
+    <a class="nav-link" href="https://www.clearwaterconservancy.org/" target="_blank" rel="noopener">Main Website</a>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar collapsed" id="sidebar">
+    <button class="sidebar-tab" onclick="toggleSidebar()" title="Toggle site list">
+      <svg class="tab-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <div class="sidebar-header">
+      <h1>Clearwater Conservancy</h1>
+      <div class="subtitle">Central Pennsylvania Region</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value">18</div>
+          <div class="stat-label">Sites</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">5</div>
+          <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">6</div>
+          <div class="stat-label">Counties</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" class="search-input" placeholder="Search sites..." id="searchInput" oninput="filterSites()">
+    </div>
+
+    <div class="filter-row" id="filterRow">
+      <button class="filter-pill active" data-filter="all" onclick="setFilter('all', this)">All</button>
+    </div>
+
+    <div class="site-list" id="siteList"></div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-container">
+    <div id="map"></div>
+    <!-- DETAIL PANEL -->
+    <div class="detail-panel" id="detailPanel">
+      <button class="detail-close" onclick="closeDetail()">&times;</button>
+      <div class="detail-hero" id="detailHero">
+        <div class="detail-hero-bg" id="detailHeroBg"></div>
+        <div class="detail-hero-overlay"></div>
+        <div class="detail-hero-content">
+          <div class="detail-type-badge" id="detailBadge"></div>
+          <div class="detail-title" id="detailTitle"></div>
+        </div>
+      </div>
+      <div class="detail-body" id="detailBody"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.18.0/mapbox-gl.js"></script>
+<script>
+const SITES = [
+  {
+    name: "Buck Run",
+    lat: 41.02, lng: -78.01,
+    type: "Watershed",
+    color: "rgb(72, 159, 223)",
+    desc: "A headwater stream restoration area in northern Centre County. Buck Run flows through reclaimed forest land, supporting native brook trout populations and riparian habitat recovery.",
+    facts: { area: "320 ac", established: "2008", species: "12+", status: "Active" },
+    tags: ["Stream Restoration", "Brook Trout", "Riparian"]
+  },
+  {
+    name: "State Game Lands 323",
+    lat: 40.935, lng: -77.70,
+    type: "Game Lands",
+    color: "rgb(0, 79, 113)",
+    desc: "A large public hunting and conservation area managed by the Pennsylvania Game Commission. This property protects critical forest habitat in the Bald Eagle Valley and supports diverse wildlife including white-tailed deer, wild turkey, and ruffed grouse.",
+    facts: { area: "2,800 ac", established: "1995", species: "45+", status: "Protected" },
+    tags: ["Public Land", "Hunting", "Forest Habitat", "Wildlife"]
+  },
+  {
+    name: "Nittany Noll",
+    lat: 40.895, lng: -77.66,
+    type: "Nature Preserve",
+    color: "rgb(72, 159, 223)",
+    desc: "A scenic hilltop preserve overlooking Nittany Valley. Features mixed hardwood forests, wildflower meadows, and panoramic views of Mount Nittany and the surrounding ridgelines.",
+    facts: { area: "85 ac", established: "2012", species: "28+", status: "Protected" },
+    tags: ["Viewpoint", "Hardwood Forest", "Wildflowers"]
+  },
+  {
+    name: "Rockview",
+    lat: 40.893, lng: -77.78,
+    type: "Conservation Area",
+    color: "rgb(0, 79, 113)",
+    desc: "Adjacent to the historic Rockview facility, this conservation area encompasses wetlands, grasslands, and early-successional habitat. The site serves as an important corridor connecting natural areas in the Spring Creek watershed.",
+    facts: { area: "1,200 ac", established: "2001", species: "35+", status: "Active" },
+    tags: ["Wetlands", "Grasslands", "Wildlife Corridor"]
+  },
+  {
+    name: "Buffalo Run Farm",
+    lat: 40.875, lng: -77.84,
+    type: "Agricultural Conservation",
+    color: "rgb(0, 87, 63)",
+    desc: "A working farm implementing best management practices for water quality. Streambank fencing, cover crops, and nutrient management plans protect Buffalo Run, a key tributary of Spring Creek.",
+    facts: { area: "240 ac", established: "2015", species: "8+", status: "Active" },
+    tags: ["Agriculture", "Water Quality", "Best Practices"]
+  },
+  {
+    name: "Houserville Property",
+    lat: 40.868, lng: -77.73,
+    type: "Nature Preserve",
+    color: "rgb(0, 61, 76)",
+    desc: "A community nature area featuring karst topography, limestone outcrops, and exceptional spring-fed streams. The property protects sensitive groundwater recharge zones critical to the Spring Creek watershed.",
+    facts: { area: "150 ac", established: "2010", species: "22+", status: "Protected" },
+    tags: ["Karst", "Groundwater", "Springs"]
+  },
+  {
+    name: "Millbrook Marsh",
+    lat: 40.843, lng: -77.82,
+    type: "Wetland",
+    color: "rgb(72, 159, 223)",
+    desc: "One of Centre County's premier natural areas, Millbrook Marsh is a calcareous fen and wetland complex fed by limestone springs. A boardwalk trail system provides access to this ecologically significant site, home to rare plants and diverse bird species.",
+    facts: { area: "62 ac", established: "1998", species: "200+", status: "Protected" },
+    tags: ["Calcareous Fen", "Boardwalk", "Birding", "Rare Plants"]
+  },
+  {
+    name: "Gray's Woods",
+    lat: 40.835, lng: -77.86,
+    type: "Forest Preserve",
+    color: "rgb(0, 87, 63)",
+    desc: "A remnant old-growth forest fragment within the Spring Creek watershed. Gray's Woods harbors mature oak-hickory stands and provides critical urban forest ecosystem services including stormwater management and carbon sequestration.",
+    facts: { area: "45 ac", established: "2005", species: "60+", status: "Protected" },
+    tags: ["Old Growth", "Oak-Hickory", "Urban Forest"]
+  },
+  {
+    name: "Thompson Woods",
+    lat: 40.825, lng: -77.83,
+    type: "Forest Preserve",
+    color: "rgb(0, 61, 76)",
+    desc: "A forested tract south of State College featuring mixed hardwoods and seasonal wetland pockets. Thompson Woods provides habitat connectivity and recreational trail opportunities in the growing urban-wildland interface.",
+    facts: { area: "72 ac", established: "2009", species: "40+", status: "Active" },
+    tags: ["Hardwoods", "Trails", "Habitat Connectivity"]
+  },
+  {
+    name: "Barrens to Bald Eagle Wildlife Corridor",
+    lat: 40.845, lng: -77.92,
+    type: "Wildlife Corridor",
+    color: "rgb(0, 61, 76)",
+    desc: "A critical landscape-scale corridor connecting the Scotia Barrens to the Bald Eagle Ridge. This project protects migration routes for black bears, bobcats, and forest interior songbirds across fragmented habitat.",
+    facts: { area: "1,500 ac", established: "2011", species: "55+", status: "In Progress" },
+    tags: ["Migration", "Landscape Connectivity", "Bears", "Bobcat"]
+  },
+  {
+    name: "Rhoneymeade",
+    lat: 40.855, lng: -77.64,
+    type: "Nature Preserve",
+    color: "rgb(72, 159, 223)",
+    desc: "A former arboretum and estate now managed as a public nature preserve. Rhoneymeade features curated tree collections, naturalized meadows, and limestone spring habitats along the Penns Valley corridor.",
+    facts: { area: "110 ac", established: "2003", species: "90+", status: "Protected" },
+    tags: ["Arboretum", "Meadows", "Springs", "Public Access"]
+  },
+  {
+    name: "Meyer Dairy",
+    lat: 40.815, lng: -77.76,
+    type: "Agricultural Conservation",
+    color: "rgb(240, 179, 35)",
+    desc: "A dairy farm partnering in conservation easement programs to protect productive farmland and water resources. Riparian buffers and rotational grazing practices reduce nutrient runoff into local waterways.",
+    facts: { area: "180 ac", established: "2014", species: "10+", status: "Active" },
+    tags: ["Dairy", "Easement", "Riparian Buffer"]
+  },
+  {
+    name: "Gailbraith Gap",
+    lat: 40.805, lng: -77.68,
+    type: "Forest Preserve",
+    color: "rgb(0, 79, 113)",
+    desc: "A mountain gap property protecting contiguous forest along Tussey Mountain. The site safeguards headwater streams, provides critical flyover habitat for migratory raptors, and maintains the integrity of the Ridge and Valley landscape.",
+    facts: { area: "420 ac", established: "2007", species: "48+", status: "Protected" },
+    tags: ["Mountain", "Raptors", "Headwater Streams"]
+  },
+  {
+    name: "Dry Hollow",
+    lat: 40.775, lng: -77.94,
+    type: "Watershed",
+    color: "rgb(0, 87, 63)",
+    desc: "A stream and hollow restoration project addressing acid mine drainage and habitat degradation. Dry Hollow supports passive treatment systems that restore water quality and aquatic life in formerly impaired waterways.",
+    facts: { area: "280 ac", established: "2006", species: "18+", status: "Active" },
+    tags: ["AMD Treatment", "Stream Restoration", "Water Quality"]
+  },
+  {
+    name: "Musser Gap",
+    lat: 40.765, lng: -77.80,
+    type: "Recreation & Conservation",
+    color: "rgb(0, 61, 76)",
+    desc: "A popular multi-use trail corridor in the Rothrock State Forest. Musser Gap connects mountain biking, hiking, and equestrian trails while protecting forested slopes and seasonal stream headwaters.",
+    facts: { area: "350 ac", established: "2013", species: "30+", status: "Active" },
+    tags: ["Trails", "Mountain Biking", "Rothrock"]
+  },
+  {
+    name: "Plummers Hollow",
+    lat: 40.685, lng: -78.02,
+    type: "Nature Preserve",
+    color: "rgb(72, 159, 223)",
+    desc: "A pristine mountain hollow preserve in the Bald Eagle Ridge. Plummers Hollow is a biodiversity hotspot featuring old-growth hemlock stands, rich fern understories, and documented populations of rare moths and salamanders.",
+    facts: { area: "660 ac", established: "1990", species: "150+", status: "Protected" },
+    tags: ["Old Growth", "Biodiversity", "Hemlock", "Salamanders"]
+  },
+  {
+    name: "Canoe Creek Conservation Bank",
+    lat: 40.575, lng: -78.11,
+    type: "Conservation Bank",
+    color: "rgb(0, 79, 113)",
+    desc: "A wetland and stream mitigation bank near the Canoe Creek watershed. This site generates conservation credits by restoring and permanently protecting degraded habitats, offsetting impacts from development elsewhere in the region.",
+    facts: { area: "500 ac", established: "2016", species: "25+", status: "Active" },
+    tags: ["Mitigation Bank", "Wetland Restoration", "Credits"]
+  },
+  {
+    name: "Rupert Cave",
+    lat: 40.58, lng: -77.73,
+    type: "Cave & Karst",
+    color: "rgb(91, 167, 94)",
+    desc: "A significant karst feature in Huntingdon County supporting bat hibernacula and unique subterranean ecosystems. Conservation efforts focus on protecting cave-dwelling species and maintaining hydrological connectivity in the limestone landscape.",
+    facts: { area: "30 ac", established: "2011", species: "15+", status: "Protected" },
+    tags: ["Bat Habitat", "Karst", "Subterranean", "Hibernaculum"]
+  }
+];
+
+// ── SUB-POINT DATA ──
+const SUB_POINT_TEMPLATES = [
+  { label: 'Stream Gauge Station', dlat:  0.008, dlng:  0.012 },
+  { label: 'Wildlife Camera',      dlat: -0.007, dlng:  0.009 },
+  { label: 'Survey Plot',          dlat:  0.004, dlng: -0.010 },
+];
+
+const SUB_POINTS = [];
+SITES.forEach((site, si) => {
+  const jitter = (si % 5) * 0.0005;
+  SUB_POINT_TEMPLATES.forEach((tpl, ti) => {
+    SUB_POINTS.push({
+      parentName: site.name,
+      name: tpl.label,
+      lat: site.lat + tpl.dlat + jitter * (ti % 2 === 0 ? 1 : -1),
+      lng: site.lng + tpl.dlng + jitter * (ti % 2 === 0 ? -1 : 1),
+      color: site.color,
+    });
+  });
+});
+
+// ── MAP SETUP ──
+mapboxgl.accessToken = 'pk.eyJ1IjoiZGVhbHRoeSIsImEiOiJjbWx4amZyaDUwc3NpM2Zwb2N4bTRoNG04In0.pK9O---Bq9-ZJtG4wAHhwA';
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/dealthy/cmmcaawvh00aa01qn4yc04lin',
+  center: [-77.82, 40.82],
+  zoom: 10,
+  pitch: 60
+});
+
+map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+// ── MARKERS (GeoJSON layer) ──
+map.on('load', () => {
+  map.addSource('sites', {
+    type: 'geojson',
+    data: {
+      type: 'FeatureCollection',
+      features: SITES.map(site => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [site.lng, site.lat] },
+        properties: { name: site.name, color: site.color }
+      }))
+    }
+  });
+
+  map.addLayer({
+    id: 'sites-layer',
+    type: 'circle',
+    source: 'sites',
+    paint: {
+      'circle-radius': 7,
+      'circle-color': ['get', 'color'],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': 'rgba(255,255,255,0.4)'
+    }
+  });
+
+  map.addSource('sub-sites', {
+    type: 'geojson',
+    data: {
+      type: 'FeatureCollection',
+      features: SUB_POINTS.map(p => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+        properties: { parentName: p.parentName, name: p.name, color: p.color }
+      }))
+    }
+  });
+
+  map.addLayer({
+    id: 'sub-sites-layer',
+    type: 'circle',
+    source: 'sub-sites',
+    filter: ['==', 'parentName', ''],
+    paint: {
+      'circle-radius': 5,
+      'circle-color': ['get', 'color'],
+      'circle-stroke-width': 1.5,
+      'circle-stroke-color': 'rgba(255,255,255,0.6)',
+      'circle-opacity': 0.85
+    }
+  });
+
+  map.addLayer({
+    id: 'sites-selected',
+    type: 'circle',
+    source: 'sites',
+    filter: ['==', 'name', ''],
+    paint: {
+      'circle-radius': 11,
+      'circle-color': ['get', 'color'],
+      'circle-stroke-width': 3,
+      'circle-stroke-color': 'rgba(255,255,255,0.9)'
+    }
+  });
+
+  SITES.forEach(site => {
+    const el = document.createElement('div');
+    el.className = 'site-label';
+    el.textContent = site.name;
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openDetail(site);
+      map.flyTo({ center: [site.lng, site.lat], zoom: 13, duration: 800, offset: [-100, 0] });
+    });
+    new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -14] })
+      .setLngLat([site.lng, site.lat])
+      .addTo(map);
+  });
+
+  SUB_POINTS.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'sub-label';
+    el.textContent = p.name;
+    el.style.display = 'none';
+    new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -8] })
+      .setLngLat([p.lng, p.lat])
+      .addTo(map);
+    subMarkers.push({ parentName: p.parentName, el });
+  });
+
+  const tooltip = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: [0, -14],
+    className: 'map-tooltip'
+  });
+
+  map.on('mousemove', 'sites-layer', e => {
+    map.getCanvas().style.cursor = 'pointer';
+    tooltip.setLngLat(e.lngLat).setText(e.features[0].properties.name).addTo(map);
+  });
+
+  map.on('mouseleave', 'sites-layer', () => {
+    map.getCanvas().style.cursor = '';
+    tooltip.remove();
+  });
+
+  map.on('click', 'sites-layer', e => {
+    const site = SITES.find(s => s.name === e.features[0].properties.name);
+    if (site) {
+      openDetail(site);
+      map.flyTo({ center: [site.lng, site.lat], zoom: 13, duration: 800, offset: [-100, 0] });
+    }
+  });
+});
+
+// ── CATEGORIES ──
+const types = [...new Set(SITES.map(s => s.type))];
+const filterRow = document.getElementById('filterRow');
+types.forEach(type => {
+  const pill = document.createElement('button');
+  pill.className = 'filter-pill';
+  pill.textContent = type;
+  pill.dataset.filter = type;
+  pill.onclick = function() { setFilter(type, this); };
+  filterRow.appendChild(pill);
+});
+
+let activeFilter = 'all';
+
+function setFilter(filter, el) {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+// ── RENDER LIST ──
+function renderList() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const list = document.getElementById('siteList');
+  list.innerHTML = '';
+
+  const filtered = SITES.filter(s => {
+    const matchFilter = activeFilter === 'all' || s.type === activeFilter;
+    const matchSearch = s.name.toLowerCase().includes(query) || s.type.toLowerCase().includes(query) || s.tags.some(t => t.toLowerCase().includes(query));
+    return matchFilter && matchSearch;
+  });
+
+  filtered.forEach((site, i) => {
+    const card = document.createElement('div');
+    card.className = 'site-card';
+    card.style.animationDelay = `${i * 0.04}s`;
+    card.onclick = () => {
+      openDetail(site);
+      map.flyTo({ center: [site.lng, site.lat], zoom: 13, duration: 800, offset: [-100, 0] });
+    };
+    card.id = `card-${site.name.replace(/\s+/g, '-')}`;
+
+    const latDir = site.lat >= 0 ? 'N' : 'S';
+    const lngDir = site.lng >= 0 ? 'E' : 'W';
+
+    card.innerHTML = `
+      <div class="site-dot" style="background:${site.color};color:${site.color}"></div>
+      <div class="site-card-body">
+        <div class="site-card-type">${site.type}</div>
+        <div class="site-card-name">${site.name}</div>
+        <div class="site-card-desc">${site.desc}</div>
+        <div class="site-card-coords">${Math.abs(site.lat).toFixed(4)}° ${latDir} · ${Math.abs(site.lng).toFixed(4)}° ${lngDir}</div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function filterSites() { renderList(); }
+
+// ── DETAIL PANEL ──
+let activeSiteName = null;
+let subMarkers = [];
+
+function openDetail(site) {
+  const panel = document.getElementById('detailPanel');
+  const badge = document.getElementById('detailBadge');
+  const title = document.getElementById('detailTitle');
+  const body = document.getElementById('detailBody');
+  const heroBg = document.getElementById('detailHeroBg');
+
+  // Highlight card
+  document.querySelectorAll('.site-card').forEach(c => c.classList.remove('active'));
+  const cardEl = document.getElementById(`card-${site.name.replace(/\s+/g, '-')}`);
+  if (cardEl) {
+    cardEl.classList.add('active');
+    cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Highlight selected marker
+  if (map.getLayer('sites-selected')) {
+    map.setFilter('sites-selected', ['==', 'name', site.name]);
+  }
+
+  activeSiteName = site.name;
+
+  // Show sub-points for this site
+  if (map.getLayer('sub-sites-layer')) {
+    map.setFilter('sub-sites-layer', ['==', 'parentName', site.name]);
+  }
+  subMarkers.forEach(m => {
+    m.el.style.display = m.parentName === site.name ? '' : 'none';
+  });
+
+  // Hero gradient
+  heroBg.style.background = `radial-gradient(ellipse at 30% 50%, ${site.color}44, transparent 70%), radial-gradient(ellipse at 70% 80%, ${site.color}22, transparent 60%)`;
+
+  badge.textContent = site.type;
+  badge.style.background = site.color + '22';
+  badge.style.color = site.color;
+  badge.style.border = `1px solid ${site.color}44`;
+  title.textContent = site.name;
+
+  const latDir = site.lat >= 0 ? 'N' : 'S';
+  const lngDir = site.lng >= 0 ? 'E' : 'W';
+
+  body.innerHTML = `
+    <div class="detail-coords">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      ${Math.abs(site.lat).toFixed(4)}° ${latDir}, ${Math.abs(site.lng).toFixed(4)}° ${lngDir}
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Overview</div>
+      <p>${site.desc}</p>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Key Facts</div>
+      <div class="detail-facts">
+        <div class="detail-fact">
+          <div class="detail-fact-value">${site.facts.area}</div>
+          <div class="detail-fact-label">Area</div>
+        </div>
+        <div class="detail-fact">
+          <div class="detail-fact-value">${site.facts.established}</div>
+          <div class="detail-fact-label">Established</div>
+        </div>
+        <div class="detail-fact">
+          <div class="detail-fact-value">${site.facts.species}</div>
+          <div class="detail-fact-label">Species Documented</div>
+        </div>
+        <div class="detail-fact">
+          <div class="detail-fact-value">${site.facts.status}</div>
+          <div class="detail-fact-label">Status</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Tags</div>
+      <div class="detail-tags">
+        ${site.tags.map(t => `<span class="detail-tag">${t}</span>`).join('')}
+      </div>
+    </div>
+  `;
+
+  panel.classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  document.querySelectorAll('.site-card').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.custom-marker').forEach(m => {
+    m.classList.remove('active-marker', 'marker-pulse');
+  });
+  activeSiteName = null;
+
+  // Hide sub-points
+  if (map.getLayer('sub-sites-layer')) {
+    map.setFilter('sub-sites-layer', ['==', 'parentName', '']);
+  }
+  if (map.getLayer('sites-selected')) {
+    map.setFilter('sites-selected', ['==', 'name', '']);
+  }
+  subMarkers.forEach(m => { m.el.style.display = 'none'; });
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+function showView(view) {
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// Init
+renderList();
+</script>
+</body>
+</html>
