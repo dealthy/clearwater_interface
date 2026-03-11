@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Clearwater Conservancy</title>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
     --bg-deep: var(--navy);
@@ -102,8 +103,8 @@
   .sidebar {
     position: absolute;
     left: 0;
-    bottom: 0;
-    height: 94%;
+    top: 60px;
+    height: calc(100% - 60px);
     width: 460px;
     background: var(--bg-panel);
     border-right: 1px solid var(--border);
@@ -331,6 +332,28 @@
   #map {
     width: 100%;
     height: 100%;
+  }
+
+  /* Site label popups */
+  .site-label-popup .mapboxgl-popup-content {
+    background: rgba(0, 20, 35, 0.88);
+    color: var(--text-primary);
+    font-family: var(--fonthg);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid rgba(240, 179, 35, 0.5);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .site-label-popup .mapboxgl-popup-tip {
+    border-top-color: rgba(0, 20, 35, 0.88);
+  }
+  .site-label-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+    border-top-color: rgba(0, 20, 35, 0.88);
   }
 
   /* Mapbox overrides */
@@ -739,60 +762,13 @@
 </div>
 
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.18.0/mapbox-gl.js"></script>
+<script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
 <script>
-// ── CONTENT FILE REGISTRY ──
-const CONTENT_FILES = [
-  ['buck-run',          'Buck Run'],
-  ['nittany-noll',      'Nittany-Noll Preserve'],
-  ['rockview',          'Rockview - PAGC'],
-  ['buffalo-run-farm',  'Buffalo Run Farm'],
-  ['millbrook-marsh',   'Millbrook Marsh'],
-  ['grays-woods',       "Gray's Woods Preserve"],
-  ['thompson-woods',    'Thompson Woods Preserve'],
-  ['barrens-corridor',  'Barrens to Bald Eagle Corridor'],
-  ['rhoneymeade',       'Rhoneymeade'],
-  ['meyer-dairy',       'Meyer Dairy'],
-  ['gailbraith-gap',    'Gailbraith Gap'],
-  ['dry-hollow',        'Dry Hollow'],
-  ['musser-gap',        'Musser Gap'],
-  ['plummers-hollow',   'Plummers Hollow'],
-  ['canoe-creek',       'Canoe Creek Conservation Bank'],
-  ['rupert-cave',       'Rupert Cave'],
-];
+// ── EDITORIAL CONTENT ──
 
-// Shapefile entries that map to a canonical content entry
-const CONTENT_ALIAS = {
-  'Rockview - PFBC':       'Rockview - PAGC',
-  'Rockview - PSU':        'Rockview - PAGC',
-  'Rockview - Benner Twp': 'Rockview - PAGC',
-  'Millbrook Marsh - Fen': 'Millbrook Marsh',
-};
-
-// Color map for immediate polygon rendering (before content loads)
-const SITE_COLORS = {
-  'Buck Run':                       'rgb(72, 159, 223)',
-  'Nittany-Noll Preserve':          'rgb(72, 159, 223)',
-  'Rockview - PAGC':                'rgb(0, 79, 113)',
-  'Rockview - PFBC':                'rgb(0, 79, 113)',
-  'Rockview - PSU':                 'rgb(0, 79, 113)',
-  'Rockview - Benner Twp':          'rgb(0, 79, 113)',
-  'Buffalo Run Farm':               'rgb(0, 87, 63)',
-  'Millbrook Marsh':                'rgb(72, 159, 223)',
-  'Millbrook Marsh - Fen':          'rgb(72, 159, 223)',
-  "Gray's Woods Preserve":          'rgb(0, 87, 63)',
-  'Thompson Woods Preserve':        'rgb(0, 61, 76)',
-  'Barrens to Bald Eagle Corridor': 'rgb(0, 61, 76)',
-  'Rhoneymeade':                    'rgb(72, 159, 223)',
-  'Meyer Dairy':                    'rgb(240, 179, 35)',
-  'Gailbraith Gap':                 'rgb(0, 79, 113)',
-  'Dry Hollow':                     'rgb(0, 87, 63)',
-  'Musser Gap':                     'rgb(0, 61, 76)',
-  'Plummers Hollow':                'rgb(72, 159, 223)',
-  'Canoe Creek Conservation Bank':  'rgb(0, 79, 113)',
-  'Rupert Cave':                    'rgb(91, 167, 94)',
-};
-
-// Loaded site content keyed by sfname
+// All configured from data/sites.json
+let CONTENT_ALIAS = {};
+let labeledSfnames = [];
 const siteContent = {};
 
 function resolveContent(sfname) {
@@ -800,190 +776,26 @@ function resolveContent(sfname) {
   return siteContent[canonical] || null;
 }
 
-// ── LOAD CONTENT FILES ──
-const contentLoadPromise = Promise.all(
-  CONTENT_FILES.map(([slug, sfname]) =>
-    fetch(`data/sites/${slug}.geojson`)
-      .then(r => r.json())
-      .then(gj => { siteContent[sfname] = gj.properties; })
-      .catch(err => console.warn(`Failed to load ${slug}.geojson:`, err))
-  )
-);
+// ── LOAD EDITORIAL CONTENT ──
+const contentLoadPromise = fetch('data/sites.json')
+  .then(r => r.json())
+  .then(data => {
+    CONTENT_ALIAS = data.aliases || {};
+    labeledSfnames = data.labeled || [];
+    data.sites.forEach(s => { siteContent[s.sfname] = s; });
+  })
+  .catch(err => console.warn('Failed to load sites.json:', err));
 
-// Placeholder so renderList works before content loads (shows nothing)
-const SITES = [
-  {
-    name: "Buck Run",
-    lat: 41.02, lng: -78.01,
-    type: "Watershed",
-    color: "rgb(72, 159, 223)",
-    desc: "A headwater stream restoration area in northern Centre County. Buck Run flows through reclaimed forest land, supporting native brook trout populations and riparian habitat recovery.",
-    facts: { area: "320 ac", established: "2008", species: "12+", status: "Active" },
-    tags: ["Stream Restoration", "Brook Trout", "Riparian"]
-  },
-  {
-    name: "State Game Lands 323",
-    lat: 40.935, lng: -77.70,
-    type: "Game Lands",
-    color: "rgb(0, 79, 113)",
-    desc: "A large public hunting and conservation area managed by the Pennsylvania Game Commission. This property protects critical forest habitat in the Bald Eagle Valley and supports diverse wildlife including white-tailed deer, wild turkey, and ruffed grouse.",
-    facts: { area: "2,800 ac", established: "1995", species: "45+", status: "Protected" },
-    tags: ["Public Land", "Hunting", "Forest Habitat", "Wildlife"]
-  },
-  {
-    name: "Nittany Noll",
-    lat: 40.895, lng: -77.66,
-    type: "Nature Preserve",
-    color: "rgb(72, 159, 223)",
-    desc: "A scenic hilltop preserve overlooking Nittany Valley. Features mixed hardwood forests, wildflower meadows, and panoramic views of Mount Nittany and the surrounding ridgelines.",
-    facts: { area: "85 ac", established: "2012", species: "28+", status: "Protected" },
-    tags: ["Viewpoint", "Hardwood Forest", "Wildflowers"]
-  },
-  {
-    name: "Rockview",
-    lat: 40.893, lng: -77.78,
-    type: "Conservation Area",
-    color: "rgb(0, 79, 113)",
-    desc: "Adjacent to the historic Rockview facility, this conservation area encompasses wetlands, grasslands, and early-successional habitat. The site serves as an important corridor connecting natural areas in the Spring Creek watershed.",
-    facts: { area: "1,200 ac", established: "2001", species: "35+", status: "Active" },
-    tags: ["Wetlands", "Grasslands", "Wildlife Corridor"]
-  },
-  {
-    name: "Buffalo Run Farm",
-    lat: 40.875, lng: -77.84,
-    type: "Agricultural Conservation",
-    color: "rgb(0, 87, 63)",
-    desc: "A working farm implementing best management practices for water quality. Streambank fencing, cover crops, and nutrient management plans protect Buffalo Run, a key tributary of Spring Creek.",
-    facts: { area: "240 ac", established: "2015", species: "8+", status: "Active" },
-    tags: ["Agriculture", "Water Quality", "Best Practices"]
-  },
-  {
-    name: "Houserville Property",
-    lat: 40.868, lng: -77.73,
-    type: "Nature Preserve",
-    color: "rgb(0, 61, 76)",
-    desc: "A community nature area featuring karst topography, limestone outcrops, and exceptional spring-fed streams. The property protects sensitive groundwater recharge zones critical to the Spring Creek watershed.",
-    facts: { area: "150 ac", established: "2010", species: "22+", status: "Protected" },
-    tags: ["Karst", "Groundwater", "Springs"]
-  },
-  {
-    name: "Millbrook Marsh",
-    lat: 40.843, lng: -77.82,
-    type: "Wetland",
-    color: "rgb(72, 159, 223)",
-    desc: "One of Centre County's premier natural areas, Millbrook Marsh is a calcareous fen and wetland complex fed by limestone springs. A boardwalk trail system provides access to this ecologically significant site, home to rare plants and diverse bird species.",
-    facts: { area: "62 ac", established: "1998", species: "200+", status: "Protected" },
-    tags: ["Calcareous Fen", "Boardwalk", "Birding", "Rare Plants"]
-  },
-  {
-    name: "Gray's Woods",
-    lat: 40.835, lng: -77.86,
-    type: "Forest Preserve",
-    color: "rgb(0, 87, 63)",
-    desc: "A remnant old-growth forest fragment within the Spring Creek watershed. Gray's Woods harbors mature oak-hickory stands and provides critical urban forest ecosystem services including stormwater management and carbon sequestration.",
-    facts: { area: "45 ac", established: "2005", species: "60+", status: "Protected" },
-    tags: ["Old Growth", "Oak-Hickory", "Urban Forest"]
-  },
-  {
-    name: "Thompson Woods",
-    lat: 40.825, lng: -77.83,
-    type: "Forest Preserve",
-    color: "rgb(0, 61, 76)",
-    desc: "A forested tract south of State College featuring mixed hardwoods and seasonal wetland pockets. Thompson Woods provides habitat connectivity and recreational trail opportunities in the growing urban-wildland interface.",
-    facts: { area: "72 ac", established: "2009", species: "40+", status: "Active" },
-    tags: ["Hardwoods", "Trails", "Habitat Connectivity"]
-  },
-  {
-    name: "Barrens to Bald Eagle Wildlife Corridor",
-    lat: 40.845, lng: -77.92,
-    type: "Wildlife Corridor",
-    color: "rgb(0, 61, 76)",
-    desc: "A critical landscape-scale corridor connecting the Scotia Barrens to the Bald Eagle Ridge. This project protects migration routes for black bears, bobcats, and forest interior songbirds across fragmented habitat.",
-    facts: { area: "1,500 ac", established: "2011", species: "55+", status: "In Progress" },
-    tags: ["Migration", "Landscape Connectivity", "Bears", "Bobcat"]
-  },
-  {
-    name: "Rhoneymeade",
-    lat: 40.855, lng: -77.64,
-    type: "Nature Preserve",
-    color: "rgb(72, 159, 223)",
-    desc: "A former arboretum and estate now managed as a public nature preserve. Rhoneymeade features curated tree collections, naturalized meadows, and limestone spring habitats along the Penns Valley corridor.",
-    facts: { area: "110 ac", established: "2003", species: "90+", status: "Protected" },
-    tags: ["Arboretum", "Meadows", "Springs", "Public Access"]
-  },
-  {
-    name: "Meyer Dairy",
-    lat: 40.815, lng: -77.76,
-    type: "Agricultural Conservation",
-    color: "rgb(240, 179, 35)",
-    desc: "A dairy farm partnering in conservation easement programs to protect productive farmland and water resources. Riparian buffers and rotational grazing practices reduce nutrient runoff into local waterways.",
-    facts: { area: "180 ac", established: "2014", species: "10+", status: "Active" },
-    tags: ["Dairy", "Easement", "Riparian Buffer"]
-  },
-  {
-    name: "Gailbraith Gap",
-    lat: 40.805, lng: -77.68,
-    type: "Forest Preserve",
-    color: "rgb(0, 79, 113)",
-    desc: "A mountain gap property protecting contiguous forest along Tussey Mountain. The site safeguards headwater streams, provides critical flyover habitat for migratory raptors, and maintains the integrity of the Ridge and Valley landscape.",
-    facts: { area: "420 ac", established: "2007", species: "48+", status: "Protected" },
-    tags: ["Mountain", "Raptors", "Headwater Streams"]
-  },
-  {
-    name: "Dry Hollow",
-    lat: 40.775, lng: -77.94,
-    type: "Watershed",
-    color: "rgb(0, 87, 63)",
-    desc: "A stream and hollow restoration project addressing acid mine drainage and habitat degradation. Dry Hollow supports passive treatment systems that restore water quality and aquatic life in formerly impaired waterways.",
-    facts: { area: "280 ac", established: "2006", species: "18+", status: "Active" },
-    tags: ["AMD Treatment", "Stream Restoration", "Water Quality"]
-  },
-  {
-    name: "Musser Gap",
-    lat: 40.765, lng: -77.80,
-    type: "Recreation & Conservation",
-    color: "rgb(0, 61, 76)",
-    desc: "A popular multi-use trail corridor in the Rothrock State Forest. Musser Gap connects mountain biking, hiking, and equestrian trails while protecting forested slopes and seasonal stream headwaters.",
-    facts: { area: "350 ac", established: "2013", species: "30+", status: "Active" },
-    tags: ["Trails", "Mountain Biking", "Rothrock"]
-  },
-  {
-    name: "Plummers Hollow",
-    lat: 40.685, lng: -78.02,
-    type: "Nature Preserve",
-    color: "rgb(72, 159, 223)",
-    desc: "A pristine mountain hollow preserve in the Bald Eagle Ridge. Plummers Hollow is a biodiversity hotspot featuring old-growth hemlock stands, rich fern understories, and documented populations of rare moths and salamanders.",
-    facts: { area: "660 ac", established: "1990", species: "150+", status: "Protected" },
-    tags: ["Old Growth", "Biodiversity", "Hemlock", "Salamanders"]
-  },
-  {
-    name: "Canoe Creek Conservation Bank",
-    lat: 40.575, lng: -78.11,
-    type: "Conservation Bank",
-    color: "rgb(0, 79, 113)",
-    desc: "A wetland and stream mitigation bank near the Canoe Creek watershed. This site generates conservation credits by restoring and permanently protecting degraded habitats, offsetting impacts from development elsewhere in the region.",
-    facts: { area: "500 ac", established: "2016", species: "25+", status: "Active" },
-    tags: ["Mitigation Bank", "Wetland Restoration", "Credits"]
-  },
-  {
-    name: "Rupert Cave",
-    lat: 40.58, lng: -77.73,
-    type: "Cave & Karst",
-    color: "rgb(91, 167, 94)",
-    desc: "A significant karst feature in Huntingdon County supporting bat hibernacula and unique subterranean ecosystems. Conservation efforts focus on protecting cave-dwelling species and maintaining hydrological connectivity in the limestone landscape.",
-    facts: { area: "30 ac", established: "2011", species: "15+", status: "Protected" },
-    tags: ["Bat Habitat", "Karst", "Subterranean", "Hibernaculum"]
-  }
-];
 
-// ── BUILD COLOR EXPRESSION FOR MAPBOX ──
-function buildColorExpr() {
-  const expr = ['match', ['get', 'cleaned_na']];
-  for (const [name, color] of Object.entries(SITE_COLORS)) {
-    expr.push(name, color);
-  }
-  expr.push('#607d8b');
-  return expr;
+const SUN_COLOR = 'rgb(240, 179, 35)';
+
+function featureCentroid(geometry) {
+  const rings = geometry.type === 'Polygon'
+    ? [geometry.coordinates[0]]
+    : geometry.coordinates.map(p => p[0]); // outer ring of each polygon
+  let x = 0, y = 0, n = 0;
+  rings.forEach(ring => ring.forEach(([lng, lat]) => { x += lng; y += lat; n++; }));
+  return n > 0 ? [x / n, y / n] : null;
 }
 
 // ── MAP SETUP ──
@@ -993,7 +805,7 @@ const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/dealthy/cmmcaawvh00aa01qn4yc04lin',
   center: [-78.002306, 40.758736],
-  zoom: 9,
+  zoom: 10,
   pitch: 60
 });
 
@@ -1001,13 +813,28 @@ map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-r
 
 // ── MAP + CONTENT LOAD ──
 const mapLoadPromise = new Promise(resolve => map.on('load', resolve));
+const shpLoadPromise = shp('data/wgs84clean/cwc_wgs84_clean_nocol.zip').catch(err => {
+  console.warn('Failed to load shapefile:', err);
+  return null;
+});
 
-Promise.all([mapLoadPromise, contentLoadPromise]).then(() => {
-  const colorExpr = buildColorExpr();
+// Global reference so card clicks can look up centroids
+let propertiesGeojson = null;
 
+function centroidBySfname(sfname) {
+  if (!propertiesGeojson) return null;
+  const canonical = CONTENT_ALIAS[sfname] || sfname;
+  const feature = propertiesGeojson.features.find(f =>
+    f.properties.cleaned_na === canonical || f.properties.cleaned_na === sfname
+  );
+  return feature ? featureCentroid(feature.geometry) : null;
+}
+
+Promise.all([mapLoadPromise, contentLoadPromise, shpLoadPromise]).then(([, , geojson]) => {
+  propertiesGeojson = geojson;
   map.addSource('properties', {
     type: 'geojson',
-    data: 'data/properties.geojson',
+    data: geojson,
     generateId: true
   });
 
@@ -1016,7 +843,7 @@ Promise.all([mapLoadPromise, contentLoadPromise]).then(() => {
     id: 'properties-fill',
     type: 'fill',
     source: 'properties',
-    paint: { 'fill-color': colorExpr, 'fill-opacity': 0.45 }
+    paint: { 'fill-color': SUN_COLOR, 'fill-opacity': 0.45 }
   });
 
   // Hover highlight
@@ -1047,7 +874,7 @@ Promise.all([mapLoadPromise, contentLoadPromise]).then(() => {
     type: 'line',
     source: 'properties',
     paint: {
-      'line-color': colorExpr,
+      'line-color': SUN_COLOR,
       'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 2.5, 1.2],
       'line-opacity': 0.9
     }
@@ -1076,10 +903,26 @@ Promise.all([mapLoadPromise, contentLoadPromise]).then(() => {
   });
 
   map.on('click', 'properties-fill', e => {
-    const sfname = e.features[0].properties.cleaned_na;
-    if (!sfname) return;
-    const content = resolveContent(sfname);
-    if (!content) return;
+    const p = e.features[0].properties;
+    const sfname = p.cleaned_na || p.CWC_NAME || null;
+    const editorial = sfname ? resolveContent(sfname) : null;
+    const displayName = editorial?.name || sfname || 'CWC Property';
+    const content = {
+      name: displayName,
+      sfname: sfname || displayName,
+      type: editorial?.type || 'N/A',
+      color: editorial?.color || SUN_COLOR,
+      desc: editorial?.desc || 'No additional information available for this property.',
+      tags: editorial?.tags || [],
+      species: editorial?.species || 'N/A',
+      status: editorial?.status || 'N/A',
+      // Always from shapefile:
+      total_acres: p.clean_acre || 'N/A',
+      county: p.cleaned_co || p.County || 'N/A',
+      township: p.cleaned_to || '',
+      date: p.cleaned_da || p.Year || 'N/A',
+      access: p.cleaned_ac || 'N/A',
+    };
 
     // Clear previous selection
     selectedIds.forEach(id => map.setFeatureState({ source: 'properties', id }, { selected: false }));
@@ -1087,7 +930,35 @@ Promise.all([mapLoadPromise, contentLoadPromise]).then(() => {
     map.setFeatureState({ source: 'properties', id: e.features[0].id }, { selected: true });
 
     openDetail(content);
-    map.flyTo({ center: e.lngLat, zoom: 13, duration: 800, offset: [200, 0] });
+    const centroid = featureCentroid(e.features[0].geometry) || [e.lngLat.lng, e.lngLat.lat];
+    activeLabel.setLngLat(centroid).setText(content.name).addTo(map);
+    const sidebar = document.getElementById('sidebar');
+    const sidebarW = sidebar.classList.contains('collapsed') ? 0 : sidebar.offsetWidth;
+    map.flyTo({ center: centroid, zoom: 13, duration: 800, offset: [sidebarW / 2, 0] });
+  });
+
+  // ── POLYGON LABELS ──
+  labeledSfnames.forEach(sfname => {
+    const canonical = CONTENT_ALIAS[sfname] || sfname;
+    const feature = geojson.features.find(f =>
+      f.properties.cleaned_na === canonical || f.properties.cleaned_na === sfname
+    );
+    if (!feature) return;
+    const c = featureCentroid(feature.geometry);
+    if (!c) return;
+    const editorial = siteContent[sfname] || siteContent[canonical];
+    const label = editorial?.name || sfname;
+
+    new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      anchor: 'bottom',
+      className: 'site-label-popup',
+      maxWidth: 'none'
+    })
+      .setLngLat(c)
+      .setText(label)
+      .addTo(map);
   });
 
   renderList();
@@ -1096,6 +967,12 @@ Promise.all([mapLoadPromise, contentLoadPromise]).then(() => {
 const tooltip = new mapboxgl.Popup({
   closeButton: false, closeOnClick: false,
   offset: [0, -8], className: 'map-tooltip'
+});
+
+const activeLabel = new mapboxgl.Popup({
+  closeButton: false, closeOnClick: false,
+  anchor: 'bottom', className: 'site-label-popup',
+  maxWidth: 'none'
 });
 
 // ── CATEGORIES & LIST ──
@@ -1143,7 +1020,12 @@ function renderList() {
     card.id = `card-${site.sfname.replace(/[\s']/g, '-')}`;
     card.onclick = () => {
       openDetail(site);
-      map.flyTo({ center: [site.lng, site.lat], zoom: 13, duration: 800, offset: [200, 0] });
+      const center = centroidBySfname(site.sfname);
+      if (center) {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarW = sidebar.classList.contains('collapsed') ? 0 : sidebar.offsetWidth;
+        map.flyTo({ center, zoom: 13, duration: 800, offset: [sidebarW / 2, 0] });
+      }
     };
     card.innerHTML = `
       <div class="site-dot" style="background:${site.color};color:${site.color}"></div>
@@ -1234,6 +1116,8 @@ function closeDetail() {
   document.getElementById('panelViews').classList.remove('show-detail');
   document.querySelectorAll('.site-card').forEach(c => c.classList.remove('active'));
   activeSiteName = null;
+  activeLabel.remove();
+  map.flyTo({ center: [-78.002306, 40.758736], zoom: 10, pitch: 60, duration: 800 });
 }
 
 function toggleSidebar() {
